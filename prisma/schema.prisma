@@ -1,0 +1,55 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Organization {
+  id              String    @id @default(uuid())
+  name            String
+  email           String    @unique
+  phone           String    @unique
+  location        String
+  isOpen          Boolean   @default(true)
+  isEmailVerified Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
+  services        Service[]
+  staffs          Staff[]
+}
+
+model Service {
+  id           String       @id @default(uuid())
+  name         String
+  description  String
+  orgId        String
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @default(now()) @updatedAt
+  organization Organization @relation(fields: [orgId], references: [id])
+  staffs       Staff[]
+}
+
+model Staff {
+  id           String       @id @default(uuid())
+  name         String
+  email        String       @unique
+  phone        String       @unique
+  password     String
+  role         String
+  isVerified   Boolean      @default(false)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @default(now()) @updatedAt
+  orgId        String
+  serviceId    String
+  organization Organization @relation(fields: [orgId], references: [id])
+  service      Service      @relation(fields: [serviceId], references: [id])
+}
