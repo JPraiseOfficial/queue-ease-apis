@@ -1,11 +1,12 @@
 import express from "express";
 import cors from "cors";
 import authRouter from "./modules/auth/auth.routes.js";
+import orgRouter from "./modules/organization/organization.routes.js";
 import { globalErrorHandler } from "./common/utils/globalErrorHandler.js";
 
 const app = express();
 
-app.use(cors());
+// app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -19,6 +20,7 @@ app.get("/", (req, res) => {
 // === APP ROUTES ===
 const apiRouter = express.Router();
 apiRouter.use("/auth", authRouter);
+apiRouter.use("/org", orgRouter);
 
 // === BASE API ROUTE ===
 app.use("/api", apiRouter);
