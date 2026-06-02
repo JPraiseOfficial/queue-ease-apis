@@ -20,7 +20,11 @@ export const auth = async (
 
     const decoded = jwt.verify(token, ENV.JWT_SECRET) as AuthTokenPayload;
 
-    req.user = decoded;
+    req.user = {
+      id: decoded.id,
+      role: decoded.role,
+      orgId: decoded.orgId,
+    };
     next();
   } catch (error) {
     next(new AppError("Invalid or expired token. Please log in again.", 401));
