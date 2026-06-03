@@ -1,5 +1,7 @@
 import express from "express";
 import cors from "cors";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./config/swagger.config.js";
 import authRouter from "./modules/auth/auth.routes.js";
 import orgRouter from "./modules/organization/organization.routes.js";
 import { globalErrorHandler } from "./common/utils/globalErrorHandler.js";
@@ -16,6 +18,9 @@ app.get("/", (req, res) => {
     status: "All Engines Running",
   });
 });
+
+// === SWAGGER DOCS ===
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // === APP ROUTES ===
 const apiRouter = express.Router();
