@@ -19,7 +19,7 @@ const router = Router();
 
 /**
  * @swagger
- * /api/auth/signup:
+ * /auth/signup:
  *   post:
  *     summary: Sign up a new user and organization
  *     tags: [Auth]
@@ -82,7 +82,7 @@ router.post("/signup", validate(signUpSchema), signup);
 
 /**
  * @swagger
- * /api/auth/login:
+ * /auth/login:
  *   post:
  *     summary: Login a user
  *     tags: [Auth]
@@ -112,7 +112,7 @@ router.post("/login", validate(loginSchema), login);
 
 /**
  * @swagger
- * /api/auth/change-password:
+ * /auth/change-password:
  *   post:
  *     summary: Change user password
  *     tags: [Auth]
@@ -148,7 +148,7 @@ router.post(
 
 /**
  * @swagger
- * /api/auth/logout:
+ * /auth/logout:
  *   post:
  *     summary: Logout a user
  *     tags: [Auth]
