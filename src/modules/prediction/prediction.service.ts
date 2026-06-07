@@ -2,17 +2,61 @@ import { prisma } from "../../common/prisma.js";
 import { AppError } from "../../common/errors/appError.js";
 import type { GetPredictionDto } from "./prediction.schema.js";
 
+type PredictionApiResponse = {
+  predictedWaitTime?: number;
+  predicted_wait_time?: number;
+  estimatedWaitRawMinutes?: number;
+  estimated_wait_raw_minutes?: number;
+  predictedPeopleInLine?: number;
+  predicted_people_in_line?: number;
+  crowd?: number;
+};
+
 // I am preparing the service function that will eventually send data to the Python server
 export const processQueuePrediction = async (
   orgId: string,
   data: GetPredictionDto
 ) => {
-  // TODO: In the future, we will use axios or fetch here to call the Render URL:
-  // const pythonResponse = await axios.post('https://queue-ease-ml-engine.onrender.com/predict_queue', data);
+  // I am manually translating the TypeScript camelCase keys into Python snake_case keys so the ML Engine understands the payload
+  const pythonPayload = {
+    timestamp: data.timestamp,
+    facility_model: data.facilityModel,
+    facility_name: data.facilityName,
+    booking_source: data.bookingSource,
+    phone_number: data.phoneNumber
+  };
+
+  const response = await fetch("https://queue-ease-ml-engine.onrender.com/predict_queue", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    // I am sending the properly translated payload over the network
+    body: JSON.stringify(pythonPayload)
+  });
+
+  if (!response.ok) {
+    throw new AppError("Prediction service failed to process this request", 502);
+  }
+
+  const prediction = (await response.json()) as PredictionApiResponse;
   
-  // For right now, I am creating dummy variables to test the database pipeline
-  const simulatedWaitTime = 24; 
-  const simulatedCrowd = 6;
+  // I am scanning the Python response for the correct wait time output
+  const predictedWaitTime =
+    prediction.predictedWaitTime ??
+    prediction.predicted_wait_time ??
+    prediction.estimatedWaitRawMinutes ??
+    prediction.estimated_wait_raw_minutes;
+    
+  // I am scanning the Python response for the correct crowd count output
+  const predictedPeopleInLine =
+    prediction.predictedPeopleInLine ??
+    prediction.predicted_people_in_line ??
+    prediction.crowd;
+
+  if (typeof predictedWaitTime !== "number" || typeof predictedPeopleInLine !== "number") {
+    throw new AppError("Prediction service returned an invalid response", 502);
+  }
 
   // I am saving the prediction directly to our unified Prisma database
   const booking = await prisma.liveQueueBooking.create({
@@ -20,7 +64,7 @@ export const processQueuePrediction = async (
       scanTimestamp: new Date(data.timestamp),
       facilityModel: data.facilityModel,
       facilityName: data.facilityName,
-      predictedWaitTime: simulatedWaitTime,
+      predictedWaitTime,
       bookingSource: data.bookingSource,
       orgId: orgId
     }
@@ -29,7 +73,7 @@ export const processQueuePrediction = async (
   // I am returning the compiled data to the controller
   return {
     ticketNumber: booking.id,
-    predictedPeopleInLine: simulatedCrowd,
-    estimatedWaitRawMinutes: simulatedWaitTime
+    predictedPeopleInLine,
+    estimatedWaitRawMinutes: predictedWaitTime
   };
 };
