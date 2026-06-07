@@ -6,7 +6,31 @@ import { getPredictionSchema } from "./prediction.schema.js";
 
 const router = Router();
 
-// I am creating a secure POST route that requires the user to be logged in before asking for a prediction
+/**
+ * @openapi
+ * /api/prediction:
+ * post:
+ * summary: Predicts queue wait time
+ * tags: [Predictions]
+ * security:
+ * - bearerAuth: []
+ * requestBody:
+ * required: true
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * properties:
+ * timestamp:
+ * type: string
+ * facilityModel:
+ * type: string
+ * responses:
+ * 200:
+ * description: Prediction successfully generated
+ * 502:
+ * description: Prediction service failed
+ */
 router.post(
   "/",
   auth,
