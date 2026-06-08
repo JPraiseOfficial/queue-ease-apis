@@ -5,7 +5,7 @@ import { swaggerSpec } from "./config/swagger.config.js";
 import authRouter from "./modules/auth/auth.routes.js";
 import orgRouter from "./modules/organization/organization.routes.js";
 import { globalErrorHandler } from "./common/utils/globalErrorHandler.js";
-import predictionRouter from "./modules/prediction/prediction.routes.js";
+import predictionRouter from "./integrations/ml-prediction/prediction.routes.js";
 
 const app = express();
 
@@ -28,6 +28,7 @@ const apiRouter = express.Router();
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/org", orgRouter);
 apiRouter.use("/prediction", predictionRouter);
+
 // === BASE API ROUTE ===
 app.use("/api", apiRouter);
 

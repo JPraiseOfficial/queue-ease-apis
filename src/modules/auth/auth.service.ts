@@ -9,33 +9,27 @@ import { UserRole } from "../../common/types/enums.types.js";
 
 export const signupUser = async (data: signUpDto) => {
   // Check if user email exists
-  const existingEmail = await prisma.user.findFirst({
-    where: { OR: [
-      {email: data.user.email,},
-      {phone: data.user.phone}
-    ],
-    }
+  const existingEmail = await prisma.staff.findFirst({
+    where: { OR: [{ email: data.user.email }, { phone: data.user.phone }] },
   });
 
   if (existingEmail) {
     throw new AppError("User Email or Phone already exists!", 409);
   }
 
-    // Create the user
-  const hashedPassword = await bcrypt.hash(
-    data.user.password,
-    ENV.BCRYPT_SALT,
-  );
-  const user = await prisma.user.create({
+  // Create Organization
+  const organization = await createOrganization(data.organization);
+
+  // Create the user
+  const hashedPassword = await bcrypt.hash(data.user.password, ENV.BCRYPT_SALT);
+  const user = await prisma.staff.create({
     data: {
       ...data.user,
       password: hashedPassword,
-      role: UserRole.OWNER
+      orgId: organization.id,
+      role: UserRole.OWNER,
     },
   });
-
-  // Create Organization
-  const organization = await createOrganization(user.id, data.organization);
 
   const token = await generateJwtToken(user.id, user.role, organization.id);
   const res = { token, user, organization };
@@ -47,7 +41,7 @@ const generateJwtToken = async (id: string, role: string, orgId: string) => {
     {
       id,
       role,
-      orgId
+      orgId,
     },
     ENV.JWT_SECRET,
     {
@@ -58,7 +52,7 @@ const generateJwtToken = async (id: string, role: string, orgId: string) => {
 };
 
 export const login = async (data: loginDto) => {
-  const user = await prisma.user.findUnique({
+  const user = await prisma.staff.findUnique({
     where: {
       email: data.email,
     },
@@ -69,7 +63,7 @@ export const login = async (data: loginDto) => {
     throw new AppError("Invalid credentials", 401);
   }
 
-  const token = await generateJwtToken(user.id, user.role, user.organization?.id!);
+  const token = await generateJwtToken(user.id, user.role, user.orgId);
 
   const res = {
     token,
@@ -83,12 +77,12 @@ export const changePassword = async (
   userId: string,
   data: changePasswordDto,
 ) => {
-  const user = await prisma.user.findUnique({
+  const user = await prisma.staff.findUnique({
     where: { id: userId },
   });
 
   if (!user) {
-    throw new AppError("User not found", 404);
+    throw new AppError("Staff not found", 404);
   }
 
   const isPasswordValid = await bcrypt.compare(data.oldPassword, user.password);
@@ -98,7 +92,7 @@ export const changePassword = async (
 
   const hashedPassword = await bcrypt.hash(data.newPassword, ENV.BCRYPT_SALT);
 
-  await prisma.user.update({
+  await prisma.staff.update({
     where: { id: userId },
     data: { password: hashedPassword },
   });
