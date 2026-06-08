@@ -17,7 +17,7 @@ model Organization {
   name            String    @unique
   email           String    
   phone           String    
-  location        String    
+  location        String
   availability    String
   openingTime     String?
   closingTime     String?

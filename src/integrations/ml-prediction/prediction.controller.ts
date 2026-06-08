@@ -25,13 +25,13 @@ export const citizenJoinQueue = async (req: Request, res: Response, next: NextFu
     // I am stripping out the target organization ID directly from the unauthenticated request payload
     const { orgId, ...bookingData } = req.body;
 
-    // I am routing the public booking request through our primary machine learning and database pipeline
-    const registrationResult = await predictionService.processQueuePrediction(orgId, bookingData);
-
+    // I am passing the correctly matched bookingData variable to our core ML engine pipeline
+    const predictionResult = await predictionService.processQueuePrediction(orgId, bookingData);
+    
     res.status(201).json({
       status: "success",
       message: "Citizen successfully joined the queue",
-      data: registrationResult,
+      data: predictionResult,
     });
   } catch (error) {
     next(error);
