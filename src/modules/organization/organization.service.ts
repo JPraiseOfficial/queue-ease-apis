@@ -5,24 +5,21 @@ import type {
   UpdateOrganizationDto,
 } from "./organization.schema.js";
 
-export const createOrganization = async (
-  ownerId: string,
-  data: CreateOrganizationDto,
-) => {
+export const createOrganization = async (data: CreateOrganizationDto) => {
   // Implement name, email and phone being unique.
   const existingOrg = await prisma.organization.findUnique({
     where: { name: data.name },
   });
 
   if (existingOrg) {
-    await prisma.user.delete({
-      where: { id: ownerId },
-    });
+    // await prisma.user.delete({
+    //   where: { id: ownerId },
+    // });
     throw new AppError("Organization with this name already exists!", 409);
   }
 
   const organization = await prisma.organization.create({
-    data: { ...data, ownerId },
+    data: { ...data },
   });
 
   return organization;
@@ -45,6 +42,17 @@ export const updateOrganization = async (
     const cleanData = Object.fromEntries(
       Object.entries(data).filter(([_, value]) => value !== undefined),
     );
+
+    if (cleanData.name) {
+      const existingOrg = await prisma.organization.findUnique({
+        where: { name: cleanData.name },
+      });
+
+      if (existingOrg) {
+        throw new AppError("Organization with this name already exists", 409);
+      }
+    }
+
     const organization = await prisma.organization.update({
       where: { id: orgId },
       data: { ...cleanData },
