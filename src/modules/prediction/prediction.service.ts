@@ -17,16 +17,19 @@ export const processQueuePrediction = async (
   orgId: string,
   data: GetPredictionDto
 ) => {
+
+  // 1. We DEFINE the variable first
+  const prophetFriendlyTime = data.timestamp.slice(0, 19).replace("T", " ");
   // I am manually translating the TypeScript camelCase keys into Python snake_case keys so the ML Engine understands the payload
   const pythonPayload = {
-    timestamp: data.timestamp,
+    timestamp: prophetFriendlyTime,
     facility_model: data.facilityModel,
     facility_name: data.facilityName,
     booking_source: data.bookingSource,
     phone_number: data.phoneNumber
   };
 
-  const response = await fetch("https://queue-ease-ml-engine.onrender.com/predict_queue", {
+  const response = await fetch(process.env.ML_ENGINE_URL!, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
