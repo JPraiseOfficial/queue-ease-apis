@@ -92,7 +92,7 @@ export const changePassword = async (
 
   const hashedPassword = await bcrypt.hash(data.newPassword, ENV.BCRYPT_SALT);
 
-  await prisma.user.update({
+  await prisma.staff.update({
     where: { id: userId },
     data: { password: hashedPassword },
   });

@@ -25,6 +25,8 @@ model Organization {
   updatedAt       DateTime  @default(now()) @updatedAt
   services        Service[]
   staffs          Staff[]
+  liveBookings    LiveQueueBooking[]
+  hourlyMetrics   QueueHourlyMetric[]
 }
 
 model Service {
@@ -52,4 +54,50 @@ model Staff {
   serviceId    String?
   organization Organization @relation(fields: [orgId], references: [id])
   service      Service?      @relation(fields: [serviceId], references: [id])
+}
+
+
+// I am creating the live tracking table to hold real-time ticket generations
+model LiveQueueBooking {
+  id                  Int          @id @default(autoincrement())
+  scanTimestamp       DateTime
+  facilityModel       String       // e.g., 'Standard_9to5'
+  facilityName        String       // Explicit name for the dashboard
+  predictedWaitTime   Int
+  bookingSource       String       // e.g., 'WhatsApp', 'Web'
+  createdAt           DateTime     @default(now())
+  
+  // I am linking this booking explicitly to the organization that owns the facility
+  orgId               String
+  organization        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+// I am defining the Single Source of Truth (SSOT) table for the Prophet engine and PowerBI
+model QueueHourlyMetric {
+  id                       BigInt       @id @default(autoincrement())
+  metricTimestamp          DateTime     @db.Timestamptz
+  hourlyQueueCount         Int          @default(0)
+  facilityModel            String
+  facilityName             String
+  isOverride               Boolean      @default(false)
+  noShowRate               Decimal      @default(0.00) @db.Decimal(5, 2)
+  ticketsWhatsapp          Int          @default(0)
+  ticketsWeb               Int          @default(0)
+  ticketsSms               Int          @default(0)
+  ticketsUssd              Int          @default(0)
+  avgServiceTimeDesk1      Decimal      @default(0.00) @db.Decimal(5, 2)
+  avgServiceTimeDesk2      Decimal      @default(0.00) @db.Decimal(5, 2)
+  avgServiceTimeDesk3      Decimal      @default(0.00) @db.Decimal(5, 2)
+  
+  // I am linking this metric directly to the core organization
+  orgId                    String
+  organization             Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  // I am enforcing the strict duplicate prevention rule you defined in SQL
+  @@unique([metricTimestamp, facilityName])
+  
+  // I am building the indexes to ensure dashboard queries process instantly
+  @@index([metricTimestamp])
+  @@index([facilityModel])
+  @@index([facilityName])
 }
