@@ -2,14 +2,20 @@ import express from "express";
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.config.js";
+import { globalErrorHandler } from "./common/utils/globalErrorHandler.js";
 import authRouter from "./modules/auth/auth.routes.js";
 import orgRouter from "./modules/organization/organization.routes.js";
-import { globalErrorHandler } from "./common/utils/globalErrorHandler.js";
 import predictionRouter from "./integrations/ml-prediction/prediction.routes.js";
 
 const app = express();
 
-// app.use(cors());
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
