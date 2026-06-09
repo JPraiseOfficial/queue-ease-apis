@@ -4,6 +4,7 @@ import type {
   CreateOrganizationDto,
   UpdateOrganizationDto,
 } from "./organization.schema.js";
+import { removeUndefined } from "../../common/utils/utils.js";
 
 export const createOrganization = async (data: CreateOrganizationDto) => {
   // Implement name, email and phone being unique.
@@ -12,9 +13,6 @@ export const createOrganization = async (data: CreateOrganizationDto) => {
   });
 
   if (existingOrg) {
-    // await prisma.user.delete({
-    //   where: { id: ownerId },
-    // });
     throw new AppError("Organization with this name already exists!", 409);
   }
 
@@ -39,9 +37,7 @@ export const updateOrganization = async (
 ) => {
   try {
     // To remove undefined values
-    const cleanData = Object.fromEntries(
-      Object.entries(data).filter(([_, value]) => value !== undefined),
-    );
+    const cleanData = removeUndefined(data);
 
     if (cleanData.name) {
       const existingOrg = await prisma.organization.findUnique({

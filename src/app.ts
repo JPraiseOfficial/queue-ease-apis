@@ -6,6 +6,8 @@ import { globalErrorHandler } from "./common/utils/globalErrorHandler.js";
 import authRouter from "./modules/auth/auth.routes.js";
 import orgRouter from "./modules/organization/organization.routes.js";
 import predictionRouter from "./integrations/ml-prediction/prediction.routes.js";
+import serviceRouter from "./modules/services/service.routes.js";
+import staffRouter from "./modules/staff/staff.routes.js";
 
 const app = express();
 
@@ -33,6 +35,9 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 const apiRouter = express.Router();
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/org", orgRouter);
+apiRouter.use("/service", serviceRouter);
+apiRouter.use("/staff", staffRouter);
+
 apiRouter.use("/prediction", predictionRouter);
 
 // === BASE API ROUTE ===
