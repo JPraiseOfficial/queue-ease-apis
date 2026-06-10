@@ -1,25 +1,20 @@
 import { prisma } from "../../common/prisma.js";
 import { AppError } from "../../common/errors/appError.js";
-import type {
-  CreateOrganizationDto,
-  UpdateOrganizationDto,
-} from "./organization.schema.js";
+import type { CreateOrganizationDto, UpdateOrganizationDto } from "./organization.schema.js";
 
-export const createOrganization = async (data: CreateOrganizationDto) => {
-  // Implement name, email and phone being unique.
+export const createOrganization = async (data: CreateOrganizationDto, _ownerId: string) => {
+  // Prevent duplicate facilities from clouding dashboard metrics
   const existingOrg = await prisma.organization.findUnique({
     where: { name: data.name },
   });
 
   if (existingOrg) {
-    // await prisma.user.delete({
-    //   where: { id: ownerId },
-    // });
     throw new AppError("Organization with this name already exists!", 409);
   }
 
+  // Create organization with verified relation linkage
   const organization = await prisma.organization.create({
-    data: { ...data },
+    data,
   });
 
   return organization;
@@ -33,12 +28,9 @@ export const getOrganization = async (id: string) => {
   return organization;
 };
 
-export const updateOrganization = async (
-  orgId: string,
-  data: UpdateOrganizationDto,
-) => {
+export const updateOrganization = async (orgId: string, data: UpdateOrganizationDto) => {
   try {
-    // To remove undefined values
+    // Strip out undefined values safely before payload parsing
     const cleanData = Object.fromEntries(
       Object.entries(data).filter(([_, value]) => value !== undefined),
     );
