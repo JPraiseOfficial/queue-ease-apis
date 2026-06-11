@@ -7,7 +7,6 @@ import type {
 import { removeUndefined } from "../../common/utils/utils.js";
 
 export const createOrganization = async (data: CreateOrganizationDto) => {
-  // Prevent duplicate facilities from clouding dashboard metrics
   const existingOrg = await prisma.organization.findUnique({
     where: { name: data.name },
   });
@@ -16,7 +15,6 @@ export const createOrganization = async (data: CreateOrganizationDto) => {
     throw new AppError("Organization with this name already exists!", 409);
   }
 
-  // Create organization with verified relation linkage
   const organization = await prisma.organization.create({
     data,
   });
