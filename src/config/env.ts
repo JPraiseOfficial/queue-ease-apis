@@ -12,4 +12,5 @@ export const ENV = {
   NODE_ENV: getEnvVar("NODE_ENV") || "production",
   JWT_SECRET: getEnvVar("JWT_SECRET"),
   BCRYPT_SALT: parseInt(getEnvVar("BCRYPT_SALT"), 10),
+  ML_ENGINE_URL: getEnvVar("ML_ENGINE_URL"),
 };
