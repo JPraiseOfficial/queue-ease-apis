@@ -4,16 +4,30 @@ import { AppError } from "../../common/errors/appError.js";
 import { prisma } from "../../common/prisma.js";
 import type { changePasswordDto, loginDto, signUpDto } from "./auth.schema.js";
 import { ENV } from "../../config/env.js";
-import { UserRole } from "../../common/types/enums.types.js";
+import { UserRole, type UserRoleType } from "../../common/types/enums.types.js";
 
 export const signupUser = async (data: signUpDto) => {
   // Check if user email or phone exists
   const existingUser = await prisma.staff.findFirst({
-    where: { OR: [{ email: data.user.email }, { phone: data.user.phone }] },
+    where: { email: data.user.email },
   });
 
   if (existingUser) {
     throw new AppError("User Email or Phone already exists!", 409);
+  }
+
+  const existingOrgName = await prisma.organization.findFirst({
+    where: { name: data.organization.name },
+  });
+  if (existingOrgName) {
+    throw new AppError("Organization with this name already exists!", 409);
+  }
+
+  const existingOrgCode = await prisma.organization.findFirst({
+    where: { orgCode: data.organization.orgCode },
+  });
+  if (existingOrgCode) {
+    throw new AppError("Organization with this code already exists!", 409);
   }
 
   // Using transaction so if one fails, everything rolls back safely
@@ -39,18 +53,27 @@ export const signupUser = async (data: signUpDto) => {
     return { user, organization };
   });
 
-  // I am generating the authorization token with all the newly assigned IDs
   const token = generateJwtToken(
     result.user.id,
     result.user.role,
     result.organization.id,
+    result.user.serviceId,
   );
 
   return { token, user: result.user, organization: result.organization };
 };
 
-const generateJwtToken = (id: string, role: string, orgId: string): string => {
-  const token = jwt.sign({ id, role, orgId }, ENV.JWT_SECRET, {
+const generateJwtToken = (
+  id: string,
+  role: string,
+  orgId: string,
+  serviceId: string | null,
+): string => {
+  if (role !== UserRole.STAFF) {
+    serviceId = null;
+  }
+
+  const token = jwt.sign({ id, role, orgId, serviceId }, ENV.JWT_SECRET, {
     expiresIn: "24h",
   });
   return token;
@@ -66,7 +89,12 @@ export const login = async (data: loginDto) => {
     throw new AppError("Invalid credentials", 401);
   }
 
-  const token = generateJwtToken(user.id, user.role, user.organization.id);
+  const token = generateJwtToken(
+    user.id,
+    user.role,
+    user.organization.id,
+    user.serviceId,
+  );
 
   return { token, user };
 };

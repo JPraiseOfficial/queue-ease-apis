@@ -35,10 +35,13 @@ router.use(authorize(["owner", "admin"]));
  *             required:
  *               - name
  *               - description
+ *               - code
  *             properties:
  *               name:
  *                 type: string
  *               description:
+ *                 type: string
+ *               code:
  *                 type: string
  *     responses:
  *       201:
@@ -115,6 +118,8 @@ router.get(
  *               name:
  *                 type: string
  *               description:
+ *                 type: string
+ *               code:
  *                 type: string
  *     responses:
  *       200:

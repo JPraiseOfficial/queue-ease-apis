@@ -1,13 +1,9 @@
-import { AuthTokenPayload } from "./jwt.types.js";
+import type { AuthTokenPayload } from "./jwt.type.ts";
 
 declare global {
   namespace Express {
     export interface Request {
-      user?: {
-        id: string;
-        role: UserRoleType;
-        orgId: string;
-      };
+      user?: AuthTokenPayload;
     }
   }
 }

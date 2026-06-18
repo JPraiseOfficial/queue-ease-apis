@@ -2,13 +2,9 @@ import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { AppError } from "../errors/appError.js";
 import { ENV } from "../../config/env.js";
-import type { AuthTokenPayload } from "../types/jwt.type.js";
+import type { JwtAuthTokenPayload } from "../types/jwt.type.js";
 
-export const auth = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const auth = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -18,12 +14,13 @@ export const auth = async (
 
     const token = authHeader.split(" ")[1]!;
 
-    const decoded = jwt.verify(token, ENV.JWT_SECRET) as AuthTokenPayload;
+    const decoded = jwt.verify(token, ENV.JWT_SECRET) as JwtAuthTokenPayload;
 
     req.user = {
       id: decoded.id,
       role: decoded.role,
       orgId: decoded.orgId,
+      serviceId: decoded.serviceId,
     };
     next();
   } catch (error) {
