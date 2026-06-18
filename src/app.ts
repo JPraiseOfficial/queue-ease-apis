@@ -8,6 +8,8 @@ import orgRouter from "./modules/organization/organization.routes.js";
 import predictionRouter from "./integrations/ml-prediction/prediction.routes.js";
 import serviceRouter from "./modules/services/service.routes.js";
 import staffRouter from "./modules/staff/staff.routes.js";
+import ticketRouter from "./modules/ticket/ticket.routes.js";
+import queueRouter from "./modules/queue/queue.routes.js";
 
 const app = express();
 
@@ -37,6 +39,8 @@ apiRouter.use("/auth", authRouter);
 apiRouter.use("/org", orgRouter);
 apiRouter.use("/service", serviceRouter);
 apiRouter.use("/staff", staffRouter);
+apiRouter.use("/ticket", ticketRouter);
+apiRouter.use("/queue", queueRouter);
 
 apiRouter.use("/prediction", predictionRouter);
 

@@ -4,6 +4,14 @@ import type { CreateServiceDto, UpdateServiceDto } from "./service.schema.js";
 import { removeUndefined } from "../../common/utils/utils.js";
 
 export const createService = async (orgId: string, data: CreateServiceDto) => {
+  const existingServiceCode = await prisma.service.findFirst({
+    where: { AND: [{ code: data.code }, { orgId }] },
+  });
+
+  if (existingServiceCode) {
+    throw new AppError("Service with this code already exists", 409);
+  }
+  
   const service = await prisma.service.create({
     data: {
       ...data,

@@ -5,9 +5,10 @@ export const createOrganizationSchema = z.object({
   email: z.email("Enter a valid email address"),
   phone: z.string().min(10, "Enter a valid phone number"),
   location: z.string().min(2, "Location is required"),
-  availability: z.enum(['weekdays', 'always_open']),
+  availability: z.enum(["weekdays", "always_open"]),
   openingTime: z.string().nullable(),
-  closingTime: z.string().nullable()
+  closingTime: z.string().nullable(),
+  orgCode: z.string().max(8, "Org Code must not exceed 8 characters"),
 });
 
 export const updateOrganizationSchema = createOrganizationSchema.partial()

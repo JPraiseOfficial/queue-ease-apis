@@ -5,6 +5,7 @@
 
 generator client {
   provider = "prisma-client"
+  previewFeatures = ["partialIndexes"]
   output   = "../src/generated/prisma"
 }
 
@@ -21,10 +22,13 @@ model Organization {
   availability    String
   openingTime     String?
   closingTime     String?
+  orgCode         String    @unique
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @default(now()) @updatedAt
   services        Service[]
   staffs          Staff[]
+  tickets         Ticket[]
+  queueRecords     QueueRecord[]
   liveBookings    LiveQueueBooking[]
   hourlyMetrics   QueueHourlyMetric[]
 }
@@ -33,18 +37,21 @@ model Service {
   id           String       @id @default(uuid())
   name         String
   description  String
+  code         String
   orgId        String
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @default(now()) @updatedAt
   organization Organization @relation(fields: [orgId], references: [id])
   staffs       Staff[]
+  tickets         Ticket[]
+  queueRecords     QueueRecord[]
 }
 
 model Staff {
   id           String       @id @default(uuid())
   name         String
   email        String       @unique
-  phone        String       @unique
+  phone        String       
   password     String
   role         String
   isVerified   Boolean      @default(false)
@@ -54,6 +61,53 @@ model Staff {
   serviceId    String?
   organization Organization @relation(fields: [orgId], references: [id])
   service      Service?      @relation(fields: [serviceId], references: [id])
+  tickets         Ticket[]
+}
+
+model Ticket {
+  id              String       @id @default(uuid())
+  name            String
+  phone           String       
+  address         String
+  orgId           String
+  serviceId       String
+  source          String
+  ticketNo        String
+  status          String      @default("pending")
+  handledByStaff  String?
+  handledAt       DateTime?
+  completedAt     DateTime?   
+  waitTime        Int?
+  timeSpent       Int?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @default(now()) @updatedAt
+  organization    Organization  @relation(fields: [orgId], references: [id])
+  service         Service       @relation(fields: [serviceId], references: [id])
+  staff           Staff?       @relation(fields: [handledByStaff], references: [id])
+
+  // Partial Index for Pending Tickets
+  @@index([orgId, serviceId, createdAt(sort: Asc)], where: raw("status = 'pending'"), map: "idx_org_service_pending_tickets")
+
+  // Partial Index for Ongoing Tickets
+  @@index([orgId, serviceId, createdAt(sort: Asc)], where: raw("status = 'ongoing'"), map: "idx_org_service_ongoing_tickets")
+
+  // Partial Index for Answered Tickets
+  @@index([orgId, serviceId, createdAt(sort: Desc)], where: raw("status IN ('served', 'no_show')"), map: "idx_org_service_completed_tickets_today")  
+}
+
+model QueueRecord {
+  id                      String        @id @default(uuid())
+  date                    DateTime      @default(now()) @db.Date
+  orgId                   String
+  serviceId               String
+  totalTicketsDisbursed   Int           @default(0)
+  noOfTicketsServed       Int           @default(0)
+  noOfnoShowTickets       Int           @default(0)
+  organization            Organization  @relation(fields: [orgId], references: [id])
+  service                 Service       @relation(fields: [serviceId], references: [id])
+
+  @@index([orgId, date])
+  @@unique([orgId, serviceId, date])
 }
 
 

@@ -49,6 +49,21 @@ router.get("/", auth, organizationController.getOrg);
  *           schema:
  *             type: object
  *             description: The organization fields to update
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               location:
+ *                 type: string
+ *               availability:
+ *                 type: string
+ *               openingTime:
+ *                 type: string
+ *               closingTime:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Successfully updated organization

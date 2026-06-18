@@ -62,6 +62,8 @@ const router = Router();
  *                     type: string
  *                   location:
  *                     type: string
+ *                   orgCode:
+ *                     type: string
  *                   availability:
  *                     type: string
  *                   openingTime:
@@ -76,7 +78,7 @@ const router = Router();
  *       400:
  *         description: Validation error
  *       409:
- *         description: Conflict - User Email or Phone already exists
+ *         description: Conflict - {Error Message}
  */
 router.post("/signup", validate(signUpSchema), signup);
 
