@@ -5,12 +5,10 @@ import { prisma } from "../../common/prisma.js";
 import type { changePasswordDto, loginDto, signUpDto } from "./auth.schema.js";
 import { ENV } from "../../config/env.js";
 import { UserRole, type UserRoleType } from "../../common/types/enums.types.js";
-import crypto from "crypto";
 import { sendVerificationEmail, sendPasswordResetEmail } from "../../common/utils/email.service.js";
 
 
 export const signupUser = async (data: signUpDto) => {
-  // Check if user email or phone exists
   const existingUser = await prisma.staff.findFirst({
     where: { email: data.user.email },
   });
@@ -44,17 +42,12 @@ export const signupUser = async (data: signUpDto) => {
       data: { ...data.organization },
     });
 
-    const emailVerifyToken = crypto.randomBytes(32).toString("hex");
-const emailVerifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-const user = await tx.staff.create({
+    const user = await tx.staff.create({
   data: {
     ...data.user,
     password: hashedPassword,
     role: UserRole.OWNER,
     orgId: organization.id,
-    emailVerifyToken,
-    emailVerifyExpiry,
     isEmailVerified: false,
   },
 });
@@ -62,11 +55,17 @@ const user = await tx.staff.create({
     return { user, organization };
   });
 
-  // Send verification email to owner on signup
+  
+const emailVerifyToken = jwt.sign(
+  { id: result.user.id },
+  ENV.JWT_SECRET,
+  { expiresIn: "24h" }
+);
+
 await sendVerificationEmail(
   result.user.email,
   result.user.name,
-  result.user.emailVerifyToken!,
+  emailVerifyToken,
 );
 
 const token = generateJwtToken(
@@ -76,7 +75,7 @@ const token = generateJwtToken(
   result.user.serviceId,
 );
 
-  const { password, emailVerifyToken, emailVerifyExpiry, passwordResetToken, passwordResetExpiry, ...safeUser } = result.user;
+  const { password, ...safeUser } = result.user;
 
   return { token, user: safeUser, organization: result.organization };
 };
@@ -114,7 +113,7 @@ export const login = async (data: loginDto) => {
     user.serviceId,
   );
 
-  const { password, emailVerifyToken, emailVerifyExpiry, passwordResetToken, passwordResetExpiry, ...safeUser } = user;
+  const { password, ...safeUser } = user;
 
   return { token, user: safeUser };
 };
@@ -147,23 +146,30 @@ export const changePassword = async (
 };
 
 export const verifyEmail = async (token: string) => {
-  const user = await prisma.staff.findFirst({
-    where: {
-      emailVerifyToken: token,
-      emailVerifyExpiry: { gt: new Date() },
-    },
+  let decoded: { id: string };
+
+  try {
+    decoded = jwt.verify(token, ENV.JWT_SECRET) as { id: string };
+  } catch (error) {
+    throw new AppError("Invalid or expired verification link", 400);
+  }
+
+  const user = await prisma.staff.findUnique({
+    where: { id: decoded.id },
   });
 
   if (!user) {
-    throw new AppError("Invalid or expired verification link", 400);
+    throw new AppError("User not found", 404);
+  }
+
+  if (user.isEmailVerified) {
+    throw new AppError("Email is already verified", 400);
   }
 
   await prisma.staff.update({
     where: { id: user.id },
     data: {
       isEmailVerified: true,
-      emailVerifyToken: null,
-      emailVerifyExpiry: null,
     },
   });
 
@@ -175,7 +181,6 @@ export const forgotPassword = async (email: string) => {
     where: { email },
   });
 
-  // Only owner and admin can use forgot password
   if (!user || user.role === UserRole.STAFF) {
     throw new AppError(
       "If you are a desk officer, please contact your administrator to reset your password",
@@ -190,35 +195,34 @@ export const forgotPassword = async (email: string) => {
     );
   }
 
-  const passwordResetToken = crypto.randomBytes(32).toString("hex");
-  const passwordResetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+  const passwordResetToken = jwt.sign(
+  { id: user.id },
+  ENV.JWT_SECRET,
+  { expiresIn: "1h" }
+);
 
-  await prisma.staff.update({
-    where: { id: user.id },
-    data: {
-      passwordResetToken,
-      passwordResetExpiry,
-    },
-  });
-
-  await sendPasswordResetEmail(user.email, user.name, passwordResetToken);
+await sendPasswordResetEmail(user.email, user.name, passwordResetToken);
 
   return { message: "Password reset link sent to your email" };
 };
 
 export const resetPassword = async (token: string, newPassword: string) => {
-  const user = await prisma.staff.findFirst({
-    where: {
-      passwordResetToken: token,
-      passwordResetExpiry: { gt: new Date() },
-    },
-  });
+  let decoded: { id: string };
 
-  if (!user) {
+  try {
+    decoded = jwt.verify(token, ENV.JWT_SECRET) as { id: string };
+  } catch (error) {
     throw new AppError("Invalid or expired password reset link", 400);
   }
 
-  // Only owner and admin can reset password this way
+  const user = await prisma.staff.findUnique({
+    where: { id: decoded.id },
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
   if (user.role === UserRole.STAFF) {
     throw new AppError(
       "Desk officers cannot reset passwords. Please contact your administrator",
@@ -232,8 +236,6 @@ export const resetPassword = async (token: string, newPassword: string) => {
     where: { id: user.id },
     data: {
       password: hashedPassword,
-      passwordResetToken: null,
-      passwordResetExpiry: null,
     },
   });
 

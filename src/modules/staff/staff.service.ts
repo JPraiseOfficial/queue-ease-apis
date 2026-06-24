@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import crypto from "crypto";
+import jwt from "jsonwebtoken";
 import { prisma } from "../../common/prisma.js";
 import { AppError } from "../../common/errors/appError.js";
 import type {
@@ -105,14 +105,15 @@ export const updateStaff = async (
   let emailVerificationFields = {};
 
   if (isEmailChanging && isOwnerOrAdmin) {
-    const emailVerifyToken = crypto.randomBytes(32).toString("hex");
-    const emailVerifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const emailVerifyToken = jwt.sign(
+  { id: targetStaff.id },
+  ENV.JWT_SECRET,
+  { expiresIn: "24h" }
+);
 
-    emailVerificationFields = {
-      isEmailVerified: false,
-      emailVerifyToken,
-      emailVerifyExpiry,
-    };
+emailVerificationFields = {
+  isEmailVerified: false,
+};
 
     // Send verification email to new address
     await sendVerificationEmail(
