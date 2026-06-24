@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { prisma } from "../../common/prisma.js";
 import { AppError } from "../../common/errors/appError.js";
 import type {
@@ -9,6 +10,7 @@ import type {
 import { UserRole, type UserRoleType } from "../../common/types/enums.types.js";
 import { ENV } from "../../config/env.js";
 import { removeUndefined } from "../../common/utils/utils.js";
+import { sendVerificationEmail } from "../../common/utils/email.service.js";
 
 export const createStaff = async (orgId: string, data: CreateStaffDto) => {
   const existingStaff = await prisma.staff.findFirst({
@@ -90,35 +92,39 @@ export const updateStaff = async (
       403,
     );
   }
+
   const cleanData = removeUndefined(data);
-  const updatedStaff = await prisma.staff.update({
-    where: { id },
-    data: { ...cleanData },
-  });
 
-  const { password, ...staffWithoutPassword } = updatedStaff;
-  return staffWithoutPassword;
-};
+  // If email is changing and the staff is an owner or admin, force re-verification
+  const isEmailChanging =
+    cleanData.email && cleanData.email !== targetStaff.email;
+  const isOwnerOrAdmin =
+    targetStaff.role === UserRole.OWNER ||
+    targetStaff.role === UserRole.ADMIN;
 
-export const changeRole = async (
-  id: string,
-  user: { id: string; role: UserRoleType; orgId: string },
-  data: ChangeRoleDto,
-) => {
-  const targetStaff = await prisma.staff.findUnique({ where: { id } });
+  let emailVerificationFields = {};
 
-  if (!targetStaff) throw new AppError("Staff not found", 404);
-  if (targetStaff.orgId !== user.orgId)
-    throw new AppError("Unauthorized access", 403);
+  if (isEmailChanging && isOwnerOrAdmin) {
+    const emailVerifyToken = crypto.randomBytes(32).toString("hex");
+    const emailVerifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-  // Admin cannot change owner's role
-  if (user.role === "admin" && targetStaff.role !== "staff") {
-    throw new AppError("Admin cannot change owner's role", 403);
+    emailVerificationFields = {
+      isEmailVerified: false,
+      emailVerifyToken,
+      emailVerifyExpiry,
+    };
+
+    // Send verification email to new address
+    await sendVerificationEmail(
+      cleanData.email!,
+      targetStaff.name,
+      emailVerifyToken,
+    );
   }
 
   const updatedStaff = await prisma.staff.update({
     where: { id },
-    data: { role: data.role },
+    data: { ...cleanData, ...emailVerificationFields },
   });
 
   const { password, ...staffWithoutPassword } = updatedStaff;
@@ -152,5 +158,30 @@ export const viewProfile = async (id: string) => {
   if (!staff) throw new AppError("Staff not found", 404);
 
   const { password, ...staffWithoutPassword } = staff;
+  return staffWithoutPassword;
+};
+
+export const changeRole = async (
+  id: string,
+  user: { id: string; role: UserRoleType; orgId: string },
+  data: ChangeRoleDto,
+) => {
+  const targetStaff = await prisma.staff.findUnique({ where: { id } });
+
+  if (!targetStaff) throw new AppError("Staff not found", 404);
+  if (targetStaff.orgId !== user.orgId)
+    throw new AppError("Unauthorized access", 403);
+
+  // Admin cannot change owner's role
+  if (user.role === "admin" && targetStaff.role !== "staff") {
+    throw new AppError("Admin cannot change owner's role", 403);
+  }
+
+  const updatedStaff = await prisma.staff.update({
+    where: { id },
+    data: { role: data.role },
+  });
+
+  const { password, ...staffWithoutPassword } = updatedStaff;
   return staffWithoutPassword;
 };
