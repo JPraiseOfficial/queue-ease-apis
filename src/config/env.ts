@@ -13,4 +13,7 @@ export const ENV = {
   JWT_SECRET: getEnvVar("JWT_SECRET"),
   BCRYPT_SALT: parseInt(getEnvVar("BCRYPT_SALT"), 10),
   ML_ENGINE_URL: getEnvVar("ML_ENGINE_URL"),
+  APP_URL: getEnvVar("APP_URL"),
+  BREVO_API_KEY: getEnvVar("BREVO_API_KEY"),
+  BREVO_SENDER: getEnvVar("BREVO_SENDER"),
 };

@@ -55,6 +55,11 @@ model Staff {
   password     String
   role         String
   isVerified   Boolean      @default(false)
+  isEmailVerified     Boolean   @default(false)
+  emailVerifyToken    String?
+  emailVerifyExpiry   DateTime?
+  passwordResetToken  String?
+  passwordResetExpiry DateTime?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @default(now()) @updatedAt
   orgId        String
