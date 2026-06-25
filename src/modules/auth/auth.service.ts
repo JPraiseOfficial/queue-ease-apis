@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { AppError } from "../../common/errors/appError.js";
 import { prisma } from "../../common/prisma.js";
 import type { changePasswordDto, loginDto, signUpDto } from "./auth.schema.js";
@@ -195,28 +196,40 @@ export const forgotPassword = async (email: string) => {
     );
   }
 
-  const passwordResetToken = jwt.sign(
-  { id: user.id },
-  ENV.JWT_SECRET,
-  { expiresIn: "1h" }
-);
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-await sendPasswordResetEmail(user.email, user.name, passwordResetToken);
+  // Upsert — create or update if already exists
+  await prisma.passwordResetToken.upsert({
+    where: { email },
+    update: { token, expiry },
+    create: { email, token, expiry },
+  });
+
+  await sendPasswordResetEmail(user.email, user.name, token);
 
   return { message: "Password reset link sent to your email" };
 };
 
 export const resetPassword = async (token: string, newPassword: string) => {
-  let decoded: { id: string };
+  const resetRecord = await prisma.passwordResetToken.findFirst({
+    where: { token },
+  });
 
-  try {
-    decoded = jwt.verify(token, ENV.JWT_SECRET) as { id: string };
-  } catch (error) {
+  if (!resetRecord) {
     throw new AppError("Invalid or expired password reset link", 400);
   }
 
+  if (resetRecord.expiry < new Date()) {
+    // Clean up expired token
+    await prisma.passwordResetToken.delete({
+      where: { email: resetRecord.email },
+    });
+    throw new AppError("Password reset link has expired. Please request a new one", 400);
+  }
+
   const user = await prisma.staff.findUnique({
-    where: { id: decoded.id },
+    where: { email: resetRecord.email },
   });
 
   if (!user) {
@@ -232,11 +245,16 @@ export const resetPassword = async (token: string, newPassword: string) => {
 
   const hashedPassword = await bcrypt.hash(newPassword, ENV.BCRYPT_SALT);
 
-  await prisma.staff.update({
-    where: { id: user.id },
-    data: {
-      password: hashedPassword,
-    },
+  // Update password and delete the token in a transaction
+  await prisma.$transaction(async (tx) => {
+    await tx.staff.update({
+      where: { email: resetRecord.email },
+      data: { password: hashedPassword },
+    });
+
+    await tx.passwordResetToken.delete({
+      where: { email: resetRecord.email },
+    });
   });
 
   return { message: "Password reset successfully. Please login with your new password" };
