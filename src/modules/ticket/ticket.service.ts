@@ -11,7 +11,13 @@ import type { createTicketDto, ticketCompletedDto } from "./ticket.schema.js";
 export const getOrgServices = async (orgCode: string) => {
   const organization = await prisma.organization.findUnique({
     where: { orgCode },
-    select: { id: true, name: true, orgCode: true, services: true },
+    select: {
+      id: true,
+      name: true,
+      orgCode: true,
+      availability: true,
+      services: true,
+    },
   });
 
   if (!organization) {
@@ -20,17 +26,30 @@ export const getOrgServices = async (orgCode: string) => {
   if (organization.services.length === 0) {
     throw new AppError("Organization doesn't have any service", 404);
   }
-  return organization
+  return organization;
 };
 
 export const createTicket = async (data: createTicketDto) => {
   const service = await prisma.service.findUnique({
     where: { id: data.serviceId, orgId: data.orgId },
+    include: { organization: { select: { name: true, availability: true } } },
   });
 
   if (!service) {
     throw new AppError("Service not found for this organization", 404);
   }
+
+  // Get Predictions from Model
+  const prediction = await processQueuePrediction(data.orgId, {
+    timestamp: new Date().toISOString(),
+    facilityModel:
+      service.organization.availability === "always_open"
+        ? "Continuous_24_7"
+        : "Standard_9to5",
+    facilityName: service.organization.name,
+    bookingSource: data.source,
+    phoneNumber: data.phone,
+  });
 
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0); // set to UTC midnight for consistency
@@ -55,15 +74,9 @@ export const createTicket = async (data: createTicketDto) => {
         totalTicketsDisbursed: 1,
       },
     });
-    const queueNum = queueStatus.totalTicketsDisbursed
-    const paddedNum = queueNum.toString().padStart(3, '0')
+    const queueNum = queueStatus.totalTicketsDisbursed;
+    const paddedNum = queueNum.toString().padStart(3, "0");
     const ticketNo = `${service.queuePrefix}-${paddedNum}`;
-
-    // PREDICTIONS
-    // const predictionPayload = {
-
-    // }
-    // const predictedWaitTime = await processQueuePrediction(data.orgId,{timestamp: new Date(), facilityModel: ""} )
 
     const ticket = await tx.ticket.create({
       data: {
@@ -85,7 +98,9 @@ export const createTicket = async (data: createTicketDto) => {
   return {
     ...result.ticket,
     peopleInLine,
-    // estimatedWaitTIme: , To be added after prediction is sorted.
+    estimatedWaitTIme: prediction!.error
+      ? service.avgTime * peopleInLine
+      : (prediction!.estimatedWaitRawMinutes as number),
   };
 };
 
@@ -109,7 +124,8 @@ export const serveNext = async (staff: AuthTokenPayload) => {
   }
 
   const waitTime =
-    Math.floor(Date.now() - new Date(ticket.createdAt!).getTime()) / (1000 * 60);
+    Math.floor(Date.now() - new Date(ticket.createdAt!).getTime()) /
+    (1000 * 60);
 
   const updatedTicket = await prisma.ticket.update({
     where: { id: ticket.id },
