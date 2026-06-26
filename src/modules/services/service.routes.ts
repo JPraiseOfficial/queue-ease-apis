@@ -36,6 +36,14 @@ router.use(authorize(["owner", "admin"]));
  *               - name
  *               - description
  *               - code
+ *               - department
+ *               - queuePrefix
+ *               - avgTime
+ *               - dailyCapacity
+ *               - maxQueueSize
+ *               - openingTime
+ *               - closingTime
+ *               - openingDays
  *             properties:
  *               name:
  *                 type: string
@@ -43,6 +51,32 @@ router.use(authorize(["owner", "admin"]));
  *                 type: string
  *               code:
  *                 type: string
+ *               department:
+ *                 type: string
+ *               queuePrefix:
+ *                 type: string
+ *               avgTime:
+ *                 type: number
+ *                 description: Average service time in minutes.
+ *               dailyCapacity:
+ *                 type: string
+ *                 description: Daily ticket capacity.
+ *               maxQueueSize:
+ *                 type: string
+ *                 description: Maximum queue size.
+ *               openingTime:
+ *                 type: string
+ *                 format: time
+ *                 example: "09:00"
+ *               closingTime:
+ *                 type: string
+ *                 format: time
+ *                 example: "17:00"
+ *               openingDays:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   enum: [Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday]
  *     responses:
  *       201:
  *         description: Service created successfully
@@ -121,6 +155,34 @@ router.get(
  *                 type: string
  *               code:
  *                 type: string
+ *               department:
+ *                 type: string
+ *               queuePrefix:
+ *                 type: string
+ *               avgTime:
+ *                 type: string
+ *                 description: Average service time in minutes.
+ *               dailyCapacity:
+ *                 type: string
+ *                 description: Daily ticket capacity.
+ *               maxQueueSize:
+ *                 type: string
+ *                 description: Maximum queue size.
+ *               openingTime:
+ *                 type: string
+ *                 format: time
+ *                 example: "09:00"
+ *               closingTime:
+ *                 type: string
+ *                 format: time
+ *                 example: "17:00"
+ *               openingDays:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   enum: [Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday]
+ *               isActive:
+ *                 type: boolean
  *     responses:
  *       200:
  *         description: Service updated successfully

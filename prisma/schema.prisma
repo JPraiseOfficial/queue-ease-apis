@@ -39,6 +39,15 @@ model Service {
   description  String
   code         String
   orgId        String
+  department   String
+  queuePrefix  String
+  avgTime      Int
+  dailyCapacity String
+  maxQueueSize  String
+  openingTime   String
+  closingTime   String
+  openingDays   String[]
+  isActive      Boolean     @default(true)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @default(now()) @updatedAt
   organization Organization @relation(fields: [orgId], references: [id])
