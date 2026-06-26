@@ -10,6 +10,7 @@ import serviceRouter from "./modules/services/service.routes.js";
 import staffRouter from "./modules/staff/staff.routes.js";
 import ticketRouter from "./modules/ticket/ticket.routes.js";
 import queueRouter from "./modules/queue/queue.routes.js";
+import whatsappRouter from "./integrations/whatsapp/whatsapp.routes.js";
 
 const app = express();
 
@@ -41,8 +42,8 @@ apiRouter.use("/service", serviceRouter);
 apiRouter.use("/staff", staffRouter);
 apiRouter.use("/ticket", ticketRouter);
 apiRouter.use("/queue", queueRouter);
-
 apiRouter.use("/prediction", predictionRouter);
+apiRouter.use("/whatsapp", whatsappRouter);
 
 // === BASE API ROUTE ===
 app.use("/api", apiRouter);

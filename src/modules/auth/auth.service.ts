@@ -1,13 +1,15 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { AppError } from "../../common/errors/appError.js";
 import { prisma } from "../../common/prisma.js";
 import type { changePasswordDto, loginDto, signUpDto } from "./auth.schema.js";
 import { ENV } from "../../config/env.js";
 import { UserRole, type UserRoleType } from "../../common/types/enums.types.js";
+import { sendVerificationEmail, sendPasswordResetEmail } from "../../common/utils/email.service.js";
+
 
 export const signupUser = async (data: signUpDto) => {
-  // Check if user email or phone exists
   const existingUser = await prisma.staff.findFirst({
     where: { email: data.user.email },
   });
@@ -42,25 +44,41 @@ export const signupUser = async (data: signUpDto) => {
     });
 
     const user = await tx.staff.create({
-      data: {
-        ...data.user,
-        password: hashedPassword,
-        role: UserRole.OWNER,
-        orgId: organization.id,
-      },
-    });
+  data: {
+    ...data.user,
+    password: hashedPassword,
+    role: UserRole.OWNER,
+    orgId: organization.id,
+    isEmailVerified: false,
+  },
+});
 
     return { user, organization };
   });
 
-  const token = generateJwtToken(
-    result.user.id,
-    result.user.role,
-    result.organization.id,
-    result.user.serviceId,
-  );
+  
+const emailVerifyToken = jwt.sign(
+  { id: result.user.id },
+  ENV.JWT_SECRET,
+  { expiresIn: "24h" }
+);
 
-  return { token, user: result.user, organization: result.organization };
+await sendVerificationEmail(
+  result.user.email,
+  result.user.name,
+  emailVerifyToken,
+);
+
+const token = generateJwtToken(
+  result.user.id,
+  result.user.role,
+  result.organization.id,
+  result.user.serviceId,
+);
+
+  const { password, ...safeUser } = result.user;
+
+  return { token, user: safeUser, organization: result.organization };
 };
 
 const generateJwtToken = (
@@ -96,7 +114,9 @@ export const login = async (data: loginDto) => {
     user.serviceId,
   );
 
-  return { token, user };
+  const { password, ...safeUser } = user;
+
+  return { token, user: safeUser };
 };
 
 export const changePassword = async (
@@ -124,4 +144,118 @@ export const changePassword = async (
   });
 
   return { message: "Password updated successfully" };
+};
+
+export const verifyEmail = async (token: string) => {
+  let decoded: { id: string };
+
+  try {
+    decoded = jwt.verify(token, ENV.JWT_SECRET) as { id: string };
+  } catch (error) {
+    throw new AppError("Invalid or expired verification link", 400);
+  }
+
+  const user = await prisma.staff.findUnique({
+    where: { id: decoded.id },
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  if (user.isEmailVerified) {
+    throw new AppError("Email is already verified", 400);
+  }
+
+  await prisma.staff.update({
+    where: { id: user.id },
+    data: {
+      isEmailVerified: true,
+    },
+  });
+
+  return { message: "Email verified successfully" };
+};
+
+export const forgotPassword = async (email: string) => {
+  const user = await prisma.staff.findUnique({
+    where: { email },
+  });
+
+  if (!user || user.role === UserRole.STAFF) {
+    throw new AppError(
+      "If you are a desk officer, please contact your administrator to reset your password",
+      403,
+    );
+  }
+
+  if (!user.isEmailVerified) {
+    throw new AppError(
+      "Your email is not verified. Please verify your email first before resetting your password",
+      403,
+    );
+  }
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+  // Upsert — create or update if already exists
+  await prisma.passwordResetToken.upsert({
+    where: { email },
+    update: { token, expiry },
+    create: { email, token, expiry },
+  });
+
+  await sendPasswordResetEmail(user.email, user.name, token);
+
+  return { message: "Password reset link sent to your email" };
+};
+
+export const resetPassword = async (token: string, newPassword: string) => {
+  const resetRecord = await prisma.passwordResetToken.findFirst({
+    where: { token },
+  });
+
+  if (!resetRecord) {
+    throw new AppError("Invalid or expired password reset link", 400);
+  }
+
+  if (resetRecord.expiry < new Date()) {
+    // Clean up expired token
+    await prisma.passwordResetToken.delete({
+      where: { email: resetRecord.email },
+    });
+    throw new AppError("Password reset link has expired. Please request a new one", 400);
+  }
+
+  const user = await prisma.staff.findUnique({
+    where: { email: resetRecord.email },
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  if (user.role === UserRole.STAFF) {
+    throw new AppError(
+      "Desk officers cannot reset passwords. Please contact your administrator",
+      403,
+    );
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, ENV.BCRYPT_SALT);
+
+  // Update password and delete the token in a transaction
+  await prisma.$transaction(async (tx) => {
+    await tx.staff.update({
+      where: { email: resetRecord.email },
+      data: { password: hashedPassword },
+    });
+
+    await tx.passwordResetToken.delete({
+      where: { email: resetRecord.email },
+    });
+  });
+
+  return { message: "Password reset successfully. Please login with your new password" };
 };

@@ -64,6 +64,7 @@ model Staff {
   password     String
   role         String
   isVerified   Boolean      @default(false)
+  isEmailVerified     Boolean   @default(false)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @default(now()) @updatedAt
   orgId        String
@@ -151,7 +152,8 @@ model QueueHourlyMetric {
   avgServiceTimeDesk1      Decimal      @default(0.00) @db.Decimal(5, 2)
   avgServiceTimeDesk2      Decimal      @default(0.00) @db.Decimal(5, 2)
   avgServiceTimeDesk3      Decimal      @default(0.00) @db.Decimal(5, 2)
-  
+
+
   // I am linking this metric directly to the core organization
   orgId                    String
   organization             Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
@@ -163,4 +165,13 @@ model QueueHourlyMetric {
   @@index([metricTimestamp])
   @@index([facilityModel])
   @@index([facilityName])
+}
+
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  token     String
+  expiry    DateTime
+  createdAt DateTime @default(now())
 }
