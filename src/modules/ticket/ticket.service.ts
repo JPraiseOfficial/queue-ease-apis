@@ -57,7 +57,7 @@ export const createTicket = async (data: createTicketDto) => {
     });
     const queueNum = queueStatus.totalTicketsDisbursed
     const paddedNum = queueNum.toString().padStart(3, '0')
-    const ticketNo = `${service.code}-${paddedNum}`;
+    const ticketNo = `${service.queuePrefix}-${paddedNum}`;
 
     // PREDICTIONS
     // const predictionPayload = {

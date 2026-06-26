@@ -11,7 +11,15 @@ export const createService = async (orgId: string, data: CreateServiceDto) => {
   if (existingServiceCode) {
     throw new AppError("Service with this code already exists", 409);
   }
-  
+
+  const existingQueuePrefix = await prisma.service.findFirst({
+    where: { AND: [{ code: data.queuePrefix }, { orgId }] },
+  });
+
+  if (existingQueuePrefix) {
+    throw new AppError("Service with this queue prefix already exists", 409);
+  }
+
   const service = await prisma.service.create({
     data: {
       ...data,
@@ -45,7 +53,7 @@ export const updateService = async (
   if (!service) throw new AppError("Service not found", 404);
   if (service.orgId !== orgId) throw new AppError("Unauthorized access", 403);
 
-  const cleanData = removeUndefined(data)
+  const cleanData = removeUndefined(data);
 
   const updatedService = await prisma.service.update({
     where: { id },
