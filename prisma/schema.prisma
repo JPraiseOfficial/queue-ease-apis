@@ -78,7 +78,6 @@ model Ticket {
   id              String       @id @default(uuid())
   name            String
   phone           String       
-  address         String
   orgId           String
   serviceId       String
   source          String

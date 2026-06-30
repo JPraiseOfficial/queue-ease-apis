@@ -15,17 +15,10 @@ export const getOrgServices = async (orgCode: string) => {
       id: true,
       name: true,
       orgCode: true,
-      availability: true,
-      services: true,
+      location: true,
+      services: { select: { id: true, name: true }, orderBy: { name: "asc" } },
     },
   });
-
-  if (!organization) {
-    throw new AppError("Organization doesn't exist", 404);
-  }
-  if (organization.services.length === 0) {
-    throw new AppError("Organization doesn't have any service", 404);
-  }
   return organization;
 };
 
@@ -94,13 +87,13 @@ export const createTicket = async (data: createTicketDto) => {
     (result.queueStatus.noOfTicketsServed +
       result.queueStatus.noOfnoShowTickets) -
     1;
+  const estimatedWaitTIme =
+    prediction.estimatedWaitRawMinutes || service.avgTime * peopleInLine;
 
   return {
     ...result.ticket,
     peopleInLine,
-    estimatedWaitTIme: prediction!.error
-      ? service.avgTime * peopleInLine
-      : (prediction!.estimatedWaitRawMinutes as number),
+    estimatedWaitTIme,
   };
 };
 
