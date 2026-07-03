@@ -88,11 +88,17 @@ export const processIncomingMessage = async (from: string, text: string) => {
       return;
     }
 
-    const services = await prisma.service.findMany({
-      where: { orgId: session.orgId },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    });
+    if (!session.orgId) {
+  await sendMessage(from, "Session expired. Reply *Hi* to start again.");
+  delete sessions[from];
+  return;
+}
+
+const services = await prisma.service.findMany({
+  where: { orgId: session.orgId },
+  select: { id: true, name: true },
+  orderBy: { name: "asc" },
+});
 
     const index = parseInt(text) - 1;
 
