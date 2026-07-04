@@ -37,8 +37,6 @@ const router = Router();
  *                 type: string
  *               phone:
  *                 type: string
- *               address:
- *                 type: string
  *               orgId:
  *                 type: string
  *                 format: uuid

@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import * as ticketService from "./ticket.service.js";
+import { AppError } from "../../common/errors/appError.js";
 
 export const getOrgServices = async (
   req: Request,
@@ -9,6 +10,14 @@ export const getOrgServices = async (
   try {
     const { orgCode } = req.params;
     const ticket = await ticketService.getOrgServices(orgCode as string);
+
+    if (ticket === null) {
+      throw new AppError("Organization doesn't exist", 404);
+    }
+    if (ticket.services.length === 0) {
+      throw new AppError("Organization doesn't have any service", 404);
+    }
+
     res.status(201).json({ success: true, data: ticket });
   } catch (error) {
     next(error);

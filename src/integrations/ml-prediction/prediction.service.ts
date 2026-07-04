@@ -86,6 +86,8 @@ export const processQueuePrediction = async (
   } catch (error: any) {
     if (error.name === "TimeoutError" || error.name === "AbortError") {
       return { error: "Service Timeout" };
+    } else {
+      return { error: error.name };
     }
   }
 };

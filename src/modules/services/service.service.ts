@@ -39,7 +39,10 @@ export const getService = async (id: string, orgId: string) => {
 };
 
 export const getAllServices = async (orgId: string) => {
-  const services = await prisma.service.findMany({ where: { orgId } });
+  const services = await prisma.service.findMany({
+    where: { orgId },
+    orderBy: { name: "asc" },
+  });
   return services;
 };
 
